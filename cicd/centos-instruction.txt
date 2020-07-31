@@ -1,3 +1,6 @@
+1) Create New GIT hub account and login to git
+2) Open Kmaster master node and insatll the below
+
 Java Installation
 sudo yum install java-1.8.0-openjdk-devel
 
@@ -18,17 +21,51 @@ sudo rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key
 #install the latest stable version of Jenkins by typing:
 sudo yum install jenkins
 
+===================================================================
+If it is not working
+Public key for jenkins-2.235.3-1.1.noarch.rpm is not installed
+run
+sudo rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
+And then
+sudo yum install jenkins
+It works
 
-systemctl start jenkins
-systemctl status jenkins
+if still it not works
+yum remove -y jenkins
+From lvcinstructor211 lvcinstructor211 to Everyone:  12:40 PM
+curl --silent --location http://pkg.jenkins-ci.org/redhat/jenkins.repo | sudo tee /etc/yum.repos.d/jenkins.repo
+	sudo rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
+	sudo yum install jenkins --nogpgcheck
+
+===================================================================
+
+
+sudo systemctl start jenkins
+sudo systemctl status jenkins
 sudo systemctl enable jenkins
 
+jenkins.service is not a native service, redirecting to /sbin/chkconfig.
+Executing /sbin/chkconfig jenkins on
+
+If it is not enabled .. so we need to restart again manually after agin restarting the VM
+
 sudo firewall-cmd --permanent --zone=public --add-port=8080/tcp
+
+==========
+FirewallD is not running
+[vagrant@kmaster ~]$ sudo systemctl enable firewalld
+sudo systemctl start firewalld
+
+=================
 sudo firewall-cmd --reload
 
 
 go to the url
 http://192.168.56.130:8080
+
+Cat /var/lib/jenkins/secrets/initialAdminPassword
+
+9f05ef539f574ec298252c870ef37305
 
 Copy the url from the location mentioned in the initial page
 /var/lib/jenkins/secrets/initialAdminPassword
@@ -52,18 +89,7 @@ Login to Jenkins
 	
 	Click "Add Build Step" - Execute as shell
 	and copy paste the below
-
-
-On the terminal
-	sudo su
-	mv /var/lib/jenkins/.kube/config /home #this may fail if you haven't execute jenkins till kubectl at least once
-	cp -r /home/<user>/.kube /var/lib/jenkins/
-	restart jenkins
-	systemctl restart jenkins
 	
-	cd /var/lib/jenkins/.kube
-	chown jenkins:jenkins config
-	ls -ld config
 ##########################################################################
 mvn clean install
 docker build -t java-web-app-cicd:latest .
@@ -80,5 +106,44 @@ docker push <your docker user name>/java-web-app-cicd:latest
 
 kubectl delete deploy --all
 kubectl create -f deploy-tomcat.yaml
+
+
+
+==============
+if git plugin is not installed
+
+rm -rf docker-k8s
+git clone https://github.com/pparisi/docker-k8s
+cd docker-k8s
+mvn clean install
+docker build -t java-web-app-cicd:latest .
+if (docker ps -a | grep 'java-web-app-cicd')
+then
+  docker stop java-web-app-cicd
+  docker rm -f java-web-app-cicd
+fi
+docker run -d -p 8888:8080 --name java-web-app-cicd java-web-app-cicd
+mvn test
+docker login -u pparisi -p Password1
+docker commit java-web-app-cicd pparisi/java-web-app-cicd:latest
+docker push pparisi/java-web-app-cicd:latest
+
+kubectl delete deploy --all
+kubectl create -f deploy-tomcat.yaml
+
+===================
+
+
 ##########################################################################
 
+
+On the terminal
+	sudo su
+	mv /var/lib/jenkins/.kube/config /home #this may fail if you haven't execute jenkins till kubectl at least once
+	cp -r /home/<user>/.kube /var/lib/jenkins/
+	restart jenkins
+	systemctl restart jenkins
+	
+	cd /var/lib/jenkins/.kube
+	chown jenkins:jenkins config
+	ls -ld config
